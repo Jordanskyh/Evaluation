@@ -8,10 +8,18 @@ from core.models.tournament_models import TournamentType
 
 
 async def get_training_repo(task_type: TournamentType) -> TrainingRepoResponse:
-    return TrainingRepoResponse(
-        github_repo="https://github.com/rayonlabs/G.O.D", commit_hash="5f161f642cd578b829e72dedd8444a491b9bbca3"
-    )
-
+    if task_type == TournamentType.IMAGE:
+        return TrainingRepoResponse(
+            github_repo="", commit_hash=""
+        )
+    elif task_type == TournamentType.TEXT:
+        return TrainingRepoResponse(
+            github_repo="", commit_hash=""
+        )
+    else:
+        return TrainingRepoResponse(
+            github_repo="", commit_hash=""
+        )
 
 def factory_router() -> APIRouter:
     router = APIRouter()
