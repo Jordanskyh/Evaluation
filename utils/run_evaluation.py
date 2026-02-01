@@ -38,37 +38,43 @@ API_BASE_URL = "https://api.gradients.io"
 
 async def fetch_task_details(task_id: str):
     """
-    Fetch task details from the Gradients API.
+    Fetch task details from the Gradients API or local JSON file.
 
     Args:
-        task_id: The ID of the task to fetch
+        task_id: The ID of the task to fetch, or path to a local JSON file
 
     Returns:
         Task details as the appropriate task type with hotkey details
     """
-    url = f"{API_BASE_URL}/auditing/tasks/{task_id}"
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url)
-        if response.status_code != 200:
-            raise Exception(f"Failed to fetch task details: {response.status_code} {response.text}")
+    if task_id.endswith('.json') or os.path.isfile(task_id):
+        logger.info(f"Reading task details from local file: {task_id}")
+        with open(task_id, 'r') as f:
+            data = json.load(f)
+    else:
+        url = f"{API_BASE_URL}/auditing/tasks/{task_id}"
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url)
+            if response.status_code != 200:
+                raise Exception(f"Failed to fetch task details: {response.status_code} {response.text}")
 
-        data = response.json()
-        task_type = data.get("task_type")
+            data = response.json()
+    
+    task_type = data.get("task_type")
 
-        if task_type == TaskType.INSTRUCTTEXTTASK.value:
-            return InstructTextTaskWithHotkeyDetails(**data)
-        elif task_type == TaskType.CHATTASK.value:
-            return ChatTaskWithHotkeyDetails(**data)
-        elif task_type == TaskType.IMAGETASK.value:
-            return ImageTaskWithHotkeyDetails(**data)
-        elif task_type == TaskType.DPOTASK.value:
-            return DpoTaskWithHotkeyDetails(**data)
-        elif task_type == TaskType.GRPOTASK.value:
-            return GrpoTaskWithHotkeyDetails(**data)
-        elif task_type == TaskType.ENVIRONMENTTASK.value:
-            return EnvTaskWithHotkeyDetails(**data)
-        else:
-            raise ValueError(f"Unknown task type: {task_type}")
+    if task_type == TaskType.INSTRUCTTEXTTASK.value:
+        return InstructTextTaskWithHotkeyDetails(**data)
+    elif task_type == TaskType.CHATTASK.value:
+        return ChatTaskWithHotkeyDetails(**data)
+    elif task_type == TaskType.IMAGETASK.value:
+        return ImageTaskWithHotkeyDetails(**data)
+    elif task_type == TaskType.DPOTASK.value:
+        return DpoTaskWithHotkeyDetails(**data)
+    elif task_type == TaskType.GRPOTASK.value:
+        return GrpoTaskWithHotkeyDetails(**data)
+    elif task_type == TaskType.ENVIRONMENTTASK.value:
+        return EnvTaskWithHotkeyDetails(**data)
+    else:
+        raise ValueError(f"Unknown task type: {task_type}")
 
 
 async def run_evaluation_from_task_id(
@@ -222,6 +228,7 @@ if __name__ == "__main__":
         Run model evaluation for a specific task. 
         The task needs to be not older than 7 days. 
         If older than 7 days the test and synth urls are not valid anymore.
+        You can also use a local JSON file instead of fetching from API.
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -234,9 +241,15 @@ Examples:
   
   # Evaluate specific models instead of those in task details
   python utils/run_evaluation.py --task_id task_12345 --models huggingface/model1 huggingface/model2
+  
+  # Use local JSON file instead of API (offline mode)
+  python utils/run_evaluation.py --task_id contoh.json --models huggingface/my-model
+  
+  # Use absolute path to JSON file
+  python utils/run_evaluation.py --task_id /path/to/task_data.json
         """,
     )
-    parser.add_argument("--task_id", type=str, required=True, help="Task ID to fetch details from the Gradients API")
+    parser.add_argument("--task_id", type=str, required=True, help="Task ID to fetch from API, or path to local JSON file")
     parser.add_argument(
         "--gpu_ids", nargs="+", type=int, default=[0], help="List of GPU IDs to use for evaluation (default: [0])"
     )
